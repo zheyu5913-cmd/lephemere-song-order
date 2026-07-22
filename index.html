@@ -81,6 +81,7 @@ input:focus{outline:none;border-color:var(--gold-dim);}
 .configwarn{position:relative;z-index:1;background:#3a2b2b;border:1px solid var(--rose-dim);color:var(--parchment);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:1.6;}
 .success-box{position:relative;z-index:1;background:rgba(143,166,136,0.12);border:1px solid var(--sage-dim);border-radius:10px;padding:18px;text-align:center;margin-bottom:14px;}
 .success-box .num{font-family:'Noto Serif TC',serif;font-size:30px;color:var(--sage);margin:6px 0;}
+.empty{font-size:12.5px;color:var(--parchment-dim);}
 </style>
 </head>
 <body>
@@ -110,7 +111,7 @@ input:focus{outline:none;border-color:var(--gold-dim);}
   <div id="orderFlow">
     <div class="panel">
       <p class="panel-title">菜單</p>
-      <div id="menuList"></div>
+      <div id="menuList"><span class="empty">菜單載入中...</span></div>
     </div>
 
     <div class="panel">
@@ -151,35 +152,11 @@ input:focus{outline:none;border-color:var(--gold-dim);}
   var isConfigured = firebaseConfig.apiKey.indexOf('貼上') === -1;
   if(!isConfigured){ document.getElementById('configWarn').style.display = 'block'; }
 
-  var MENU = [
-    { cat: 'Appetizer 前菜', items: [
-      { id:'app1', name:'黑衣森林傘蕈溫沙拉', price:8000 },
-      { id:'app2', name:'庫爾蘋果新薯沙拉', price:8000 }
-    ]},
-    { cat: 'Soup 湯品', items: [
-      { id:'soup1', name:'法式焗烤起司洋蔥湯', price:12000 }
-    ]},
-    { cat: 'Main Course 主食', items: [
-      { id:'main1', name:'巨匠特製紅醬蛋包飯', price:18000, addon:{ id:'hiddenMagic', label:'加購隱藏魔法（店員到桌服務）', price:5000 } },
-      { id:'main2', name:'黑松露野菇燉飯', price:18000 }
-    ]},
-    { cat: 'Drinks 飲品', items: [
-      { id:'drink1', name:'三倍絲滑鮮奶油咖啡', price:10000 },
-      { id:'drink2', name:'絲絨醇厚熱巧克力', price:10000 },
-      { id:'drink3', name:'伊修加爾德皇家奶茶', price:10000 }
-    ]},
-    { cat: 'Dessert 甜品', items: [
-      { id:'dessert1', name:'莊園黑巧奶油蛋糕', price:10000 },
-      { id:'dessert2', name:'現煎黃金法式吐司', price:10000 },
-      { id:'dessert3', name:'秋實手工柿子布丁', price:10000 }
-    ]},
-    { cat: 'Set 無菜單料理', items: [
-      { id:'set1', name:'主廚精選五道套餐（店長隨機出餐）', price:40000, note:'共5道菜，內容由店長現場決定' }
-    ]}
-  ];
+  var menuItems = {}; // id -> {category,name,price,note,addonLabel,addonPrice}
+  var categoryOrder = []; // first-seen order
 
   var cart = {}; // id -> {name, price, qty, addon:{label,price}|null}
-  var db, ordersRef, nextOrderNumberRef, webhookRef;
+  var db, ordersRef, nextOrderNumberRef, webhookRef, menuRef;
   var webhookUrl = '';
 
   function petals(){
@@ -203,7 +180,7 @@ input:focus{outline:none;border-color:var(--gold-dim);}
   setInterval(tickClock,15000);
 
   function escapeHtml(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML;}
-  function fmtGil(n){ return n.toLocaleString('en-US') + ' Gil'; }
+  function fmtGil(n){ return (n||0).toLocaleString('en-US') + ' Gil'; }
 
   if(isConfigured){
     firebase.initializeApp(firebaseConfig);
@@ -211,35 +188,57 @@ input:focus{outline:none;border-color:var(--gold-dim);}
     ordersRef = db.ref('lephemere/orders');
     nextOrderNumberRef = db.ref('lephemere/nextOrderNumber');
     webhookRef = db.ref('lephemere/webhookUrl');
+    menuRef = db.ref('lephemere/menu');
 
     db.ref('.info/connected').on('value', function(snap){
       document.getElementById('connDot').className = snap.val()===true ? 'dot online' : 'dot offline';
     });
 
     webhookRef.on('value', function(snap){ webhookUrl = snap.val() || ''; });
+
+    menuRef.on('value', function(snap){
+      menuItems = snap.val() || {};
+      categoryOrder = [];
+      Object.keys(menuItems).forEach(function(id){
+        var cat = menuItems[id].category || '其他';
+        if(categoryOrder.indexOf(cat) === -1) categoryOrder.push(cat);
+      });
+      renderMenu();
+      renderCart();
+    });
   }
 
   // ---------- menu rendering ----------
-  function findItem(id){
-    for(var c=0;c<MENU.length;c++){
-      for(var i=0;i<MENU[c].items.length;i++){
-        if(MENU[c].items[i].id === id) return MENU[c].items[i];
-      }
-    }
-    return null;
+  function groupedMenu(){
+    var groups = {};
+    categoryOrder.forEach(function(c){ groups[c] = []; });
+    Object.keys(menuItems).forEach(function(id){
+      var item = menuItems[id];
+      var cat = item.category || '其他';
+      if(!groups[cat]) groups[cat] = [];
+      groups[cat].push(Object.assign({id:id}, item));
+    });
+    return groups;
   }
 
   function renderMenu(){
     var el = document.getElementById('menuList');
+    var groups = groupedMenu();
+    if(categoryOrder.length === 0){
+      el.innerHTML = '<span class="empty">菜單尚未設定，請洽店員</span>';
+      return;
+    }
     var html = '';
-    MENU.forEach(function(group){
-      html += '<div class="cat-title">'+escapeHtml(group.cat)+'</div>';
-      group.items.forEach(function(item){
+    categoryOrder.forEach(function(cat){
+      var items = groups[cat] || [];
+      if(items.length === 0) return;
+      html += '<div class="cat-title">'+escapeHtml(cat)+'</div>';
+      items.forEach(function(item){
         var qty = cart[item.id] ? cart[item.id].qty : 0;
         html += '<div class="item-row">'
           + '<div class="item-name">'+escapeHtml(item.name)
           + (item.note ? '<span class="item-note">'+escapeHtml(item.note)+'</span>' : '')
-          + (item.addon ? '<div class="addon-row"><input type="checkbox" id="addon-'+item.id+'" '+(cart[item.id]&&cart[item.id].addon?'checked':'')+'><label for="addon-'+item.id+'">'+escapeHtml(item.addon.label)+' ＋'+fmtGil(item.addon.price)+'</label></div>' : '')
+          + (item.addonLabel ? '<div class="addon-row"><input type="checkbox" id="addon-'+item.id+'" '+(cart[item.id]&&cart[item.id].addon?'checked':'')+'><label for="addon-'+item.id+'">'+escapeHtml(item.addonLabel)+' ＋'+fmtGil(item.addonPrice)+'</label></div>' : '')
           + '</div>'
           + '<div class="item-price">'+fmtGil(item.price)+'</div>'
           + '<div class="stepper">'
@@ -262,15 +261,15 @@ input:focus{outline:none;border-color:var(--gold-dim);}
       cb.addEventListener('change', function(){
         var itemId = cb.id.replace('addon-','');
         if(!cart[itemId]) return;
-        var item = findItem(itemId);
-        cart[itemId].addon = cb.checked ? { label:item.addon.label, price:item.addon.price } : null;
+        var item = menuItems[itemId];
+        cart[itemId].addon = cb.checked ? { label:item.addonLabel, price:item.addonPrice } : null;
         renderCart();
       });
     });
   }
 
   function changeQty(id, delta){
-    var item = findItem(id);
+    var item = menuItems[id];
     if(!item) return;
     var current = cart[id] ? cart[id].qty : 0;
     var next = Math.max(0, current + delta);
@@ -313,9 +312,6 @@ input:focus{outline:none;border-color:var(--gold-dim);}
     html += '<div class="cart-total"><span>總計</span><span>'+fmtGil(cartTotal())+'</span></div>';
     el.innerHTML = html;
   }
-
-  renderMenu();
-  renderCart();
 
   // ---------- submit ----------
   function sendDiscordNotification(text){
