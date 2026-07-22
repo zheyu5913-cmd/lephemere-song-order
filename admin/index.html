@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>曇時 點餐後台</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+
+*{box-sizing:border-box;}
+body{margin:0;background:#241f30;font-family:'Noto Sans TC',sans-serif;}
+:root{
+  --ink:#241f30; --ink-deep:#191420; --card:#2d2738;
+  --parchment:#f3ece1; --parchment-dim:#c7bfae;
+  --gold:#caa06b; --gold-dim:#8a6f4d;
+  --rose:#c07b8a; --rose-dim:#7a4d57;
+  --sage:#8fa688; --sage-dim:#4d5c48;
+  --mist:#a79bc4; --line:rgba(243,236,225,0.12);
+}
+.wrap{
+  background:var(--ink); color:var(--parchment); padding:28px 22px 40px;
+  border-radius:14px; max-width:900px; margin:0 auto; position:relative; min-height:100vh;
+}
+.header{
+  display:flex; justify-content:space-between; align-items:flex-end;
+  margin-bottom:22px; padding-bottom:16px; border-bottom:1px solid var(--line); flex-wrap:wrap; gap:10px;
+}
+.brand h1{font-family:'Noto Serif TC',serif;font-weight:600;font-size:21px;margin:0 0 2px;letter-spacing:0.02em;}
+.brand p{margin:0;font-size:12px;color:var(--parchment-dim);letter-spacing:0.05em;}
+.clock{text-align:right;font-size:12px;color:var(--parchment-dim);}
+.dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:6px;}
+.dot.online{background:var(--sage);}
+.dot.offline{background:var(--rose);}
+
+.panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px;}
+.panel-title{font-size:12px;color:var(--mist);letter-spacing:0.06em;margin:0 0 10px;text-transform:uppercase;}
+
+input[type=text]{
+  background:var(--ink-deep);border:1px solid var(--line);color:var(--parchment);
+  border-radius:7px;padding:9px 11px;font-size:14px;font-family:inherit;
+}
+input::placeholder{color:var(--parchment-dim);}
+input:focus{outline:none;border-color:var(--gold-dim);}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+
+.btn{background:transparent;border:1px solid var(--gold-dim);color:var(--gold);border-radius:7px;padding:9px 16px;font-size:13px;font-family:inherit;cursor:pointer;white-space:nowrap;}
+.btn:hover{background:rgba(202,160,107,0.1);}
+.btn.primary{background:var(--gold-dim);color:var(--ink-deep);border-color:var(--gold-dim);font-weight:500;}
+.btn.primary:hover{background:var(--gold);}
+.btn.ghost{border-color:var(--line);color:var(--parchment-dim);}
+.btn.ghost:hover{color:var(--parchment);border-color:var(--parchment-dim);}
+.btn.small{padding:5px 11px;font-size:11.5px;}
+
+.tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
+.tab{padding:7px 14px;border-radius:20px;border:1px solid var(--line);font-size:12.5px;cursor:pointer;color:var(--parchment-dim);}
+.tab.active{border-color:var(--gold-dim);color:var(--gold);background:rgba(202,160,107,0.08);}
+
+.order-card{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px;background:var(--ink-deep);}
+.order-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;}
+.order-num{font-family:'Noto Serif TC',serif;color:var(--gold);font-size:16px;}
+.order-name{font-size:13px;color:var(--parchment);margin-top:2px;}
+.order-note{font-size:11.5px;color:var(--mist);margin-top:2px;}
+.order-time{font-size:11px;color:var(--parchment-dim);text-align:right;}
+.order-items{margin:8px 0;font-size:13px;color:var(--parchment-dim);}
+.order-items div{padding:2px 0;}
+.order-total{font-size:13px;color:var(--gold-dim);margin-top:4px;}
+.status-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;letter-spacing:0.03em;}
+.status-pending{background:rgba(192,123,138,0.15);color:var(--rose);}
+.status-preparing{background:rgba(202,160,107,0.15);color:var(--gold);}
+.status-served{background:rgba(167,155,196,0.15);color:var(--mist);}
+.status-completed{background:rgba(143,166,136,0.15);color:var(--sage);}
+.status-cancelled{background:rgba(199,191,174,0.1);color:var(--parchment-dim);text-decoration:line-through;}
+.order-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+
+.stats-row{display:flex;gap:16px;flex-wrap:wrap;}
+.stat{font-size:13px;color:var(--parchment-dim);}
+.stat b{color:var(--gold);font-size:16px;display:block;font-family:'Noto Serif TC',serif;}
+
+.login-box{max-width:360px;margin:60px auto;}
+.empty{font-size:12.5px;color:var(--parchment-dim);}
+</style>
+</head>
+<body>
+<div class="wrap" id="wrap">
+
+  <div class="header">
+    <div class="brand">
+      <h1>曇時 Cafe l'Éphémère</h1>
+      <p>點餐後台</p>
+    </div>
+    <div class="clock">
+      <div><span class="dot offline" id="connDot"></span><span id="connText">連線中...</span></div>
+    </div>
+  </div>
+
+  <div id="configWarn" class="panel" style="display:none;border-color:var(--rose-dim);">
+    尚未設定 Firebase 連線資訊，請在程式碼中填入 firebaseConfig 後重新上傳。
+  </div>
+
+  <div class="panel login-box" id="loginBox">
+    <p class="panel-title">管理登入</p>
+    <div class="row" style="flex-direction:column;align-items:stretch;">
+      <input type="text" id="adminEmail" placeholder="帳號 Email">
+      <input type="text" id="adminPassword" placeholder="密碼">
+      <button class="btn primary" id="adminLoginBtn">登入</button>
+    </div>
+    <p id="loginError" style="font-size:12px;color:var(--rose);margin:8px 0 0;display:none;">帳號或密碼錯誤</p>
+  </div>
+
+  <div id="adminArea" style="display:none;">
+    <div class="panel">
+      <div class="stats-row">
+        <div class="stat"><b id="statPending">0</b>待處理</div>
+        <div class="stat"><b id="statPreparing">0</b>製作中</div>
+        <div class="stat"><b id="statServed">0</b>已送出</div>
+        <div class="stat"><b id="statTotalGil">0</b>今日營業額（未取消）</div>
+      </div>
+    </div>
+
+    <div class="row" style="justify-content:space-between;margin-bottom:10px;">
+      <div class="tabs" id="tabs">
+        <div class="tab active" data-filter="active">進行中</div>
+        <div class="tab" data-filter="completed">已完成</div>
+        <div class="tab" data-filter="cancelled">已取消</div>
+        <div class="tab" data-filter="all">全部</div>
+      </div>
+      <button class="btn ghost small" id="adminLogoutBtn">登出</button>
+    </div>
+
+    <div id="orderList"></div>
+  </div>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script>
+(function(){
+
+  var firebaseConfig = {
+    apiKey: "AIzaSyAPIpmaLgXp3TVTV7y-yrH63xkMtAuYMSQ",
+    authDomain: "lephemere-queue-c38d5.firebaseapp.com",
+    databaseURL: "https://lephemere-queue-c38d5-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "lephemere-queue-c38d5",
+    storageBucket: "lephemere-queue-c38d5.firebasestorage.app",
+    messagingSenderId: "35595928973",
+    appId: "1:35595928973:web:36a8a4695fd293061d29c4"
+  };
+
+  var isConfigured = firebaseConfig.apiKey.indexOf('貼上') === -1;
+  if(!isConfigured){ document.getElementById('configWarn').style.display = 'block'; }
+
+  var db, ordersRef;
+  var orders = {};
+  var currentFilter = 'active';
+
+  var STATUS_LABEL = { pending:'待處理', preparing:'製作中', served:'已送出', completed:'已完成', cancelled:'已取消' };
+  var NEXT_STATUS = { pending:'preparing', preparing:'served', served:'completed' };
+  var NEXT_LABEL = { pending:'開始製作', preparing:'標記送出', served:'標記完成' };
+
+  function escapeHtml(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+  function fmtGil(n){ return (n||0).toLocaleString('en-US') + ' Gil'; }
+  function fmtTime(ts){
+    var d = new Date(ts);
+    return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  }
+
+  function tickClock(){
+    var d=new Date();
+    document.getElementById('connText').textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  }
+  tickClock();
+  setInterval(tickClock,15000);
+
+  if(isConfigured){
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+    ordersRef = db.ref('lephemere/orders');
+
+    db.ref('.info/connected').on('value', function(snap){
+      document.getElementById('connDot').className = snap.val()===true ? 'dot online' : 'dot offline';
+    });
+
+    firebase.auth().onAuthStateChanged(function(user){
+      if(user){
+        document.getElementById('loginBox').style.display = 'none';
+        document.getElementById('adminArea').style.display = 'block';
+        attachOrders();
+      }else{
+        document.getElementById('loginBox').style.display = 'block';
+        document.getElementById('adminArea').style.display = 'none';
+      }
+    });
+  }
+
+  var attached = false;
+  function attachOrders(){
+    if(attached) return;
+    attached = true;
+    ordersRef.on('value', function(snap){
+      orders = snap.val() || {};
+      renderStats();
+      renderOrders();
+    });
+  }
+
+  document.getElementById('adminLoginBtn').addEventListener('click', function(){
+    if(!isConfigured) return;
+    var email = document.getElementById('adminEmail').value.trim();
+    var pw = document.getElementById('adminPassword').value;
+    firebase.auth().signInWithEmailAndPassword(email, pw).then(function(){
+      document.getElementById('loginError').style.display = 'none';
+      document.getElementById('adminPassword').value = '';
+    }).catch(function(){
+      document.getElementById('loginError').style.display = 'block';
+    });
+  });
+  document.getElementById('adminLogoutBtn').addEventListener('click', function(){ firebase.auth().signOut(); });
+
+  document.getElementById('tabs').addEventListener('click', function(e){
+    var tab = e.target.closest('.tab');
+    if(!tab) return;
+    currentFilter = tab.getAttribute('data-filter');
+    document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
+    tab.classList.add('active');
+    renderOrders();
+  });
+
+  function isToday(ts){
+    var d = new Date(ts), now = new Date();
+    return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth() && d.getDate()===now.getDate();
+  }
+
+  function renderStats(){
+    var pending=0, preparing=0, served=0, gil=0;
+    Object.keys(orders).forEach(function(id){
+      var o = orders[id];
+      if(!isToday(o.createdAt)) return;
+      if(o.status==='pending') pending++;
+      if(o.status==='preparing') preparing++;
+      if(o.status==='served') served++;
+      if(o.status!=='cancelled') gil += (o.total||0);
+    });
+    document.getElementById('statPending').textContent = pending;
+    document.getElementById('statPreparing').textContent = preparing;
+    document.getElementById('statServed').textContent = served;
+    document.getElementById('statTotalGil').textContent = fmtGil(gil);
+  }
+
+  function renderOrders(){
+    var el = document.getElementById('orderList');
+    var arr = Object.keys(orders).map(function(id){ var o=orders[id]; o.id=id; return o; });
+
+    arr = arr.filter(function(o){
+      if(currentFilter==='active') return o.status==='pending' || o.status==='preparing' || o.status==='served';
+      if(currentFilter==='completed') return o.status==='completed';
+      if(currentFilter==='cancelled') return o.status==='cancelled';
+      return true;
+    });
+    arr.sort(function(a,b){ return (a.createdAt||0) - (b.createdAt||0); });
+
+    if(arr.length===0){ el.innerHTML = '<p class="empty">目前沒有符合條件的訂單</p>'; return; }
+
+    var html = '';
+    arr.forEach(function(o){
+      var itemsHtml = (o.items||[]).map(function(it){
+        var extra = it.addon ? '（＋'+escapeHtml(it.addon.label)+' '+fmtGil(it.addon.price)+'）' : '';
+        return '<div>'+escapeHtml(it.name)+' × '+it.qty+extra+'</div>';
+      }).join('');
+
+      var actionsHtml = '';
+      if(NEXT_STATUS[o.status]){
+        actionsHtml += '<button class="btn primary small" data-advance="'+o.id+'">'+NEXT_LABEL[o.status]+'</button>';
+      }
+      if(o.status!=='completed' && o.status!=='cancelled'){
+        actionsHtml += '<button class="btn ghost small" data-cancel="'+o.id+'">取消訂單</button>';
+      }
+
+      html += '<div class="order-card">'
+        + '<div class="order-top">'
+        + '<div><span class="order-num">#'+o.orderNumber+'</span> <span class="status-badge status-'+o.status+'">'+STATUS_LABEL[o.status]+'</span>'
+        + '<div class="order-name">'+escapeHtml(o.name||'')+'</div>'
+        + (o.note ? '<div class="order-note">備註：'+escapeHtml(o.note)+'</div>' : '')
+        + '</div>'
+        + '<div class="order-time">'+fmtTime(o.createdAt)+'</div>'
+        + '</div>'
+        + '<div class="order-items">'+itemsHtml+'</div>'
+        + '<div class="order-total">合計 '+fmtGil(o.total)+'</div>'
+        + '<div class="order-actions">'+actionsHtml+'</div>'
+        + '</div>';
+    });
+    el.innerHTML = html;
+
+    el.querySelectorAll('[data-advance]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.getAttribute('data-advance');
+        var next = NEXT_STATUS[orders[id].status];
+        if(next) ordersRef.child(id).child('status').set(next);
+      });
+    });
+    el.querySelectorAll('[data-cancel]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.getAttribute('data-cancel');
+        if(confirm('確定要取消這筆訂單嗎？')){
+          ordersRef.child(id).child('status').set('cancelled');
+        }
+      });
+    });
+  }
+
+})();
+</script>
+
+</body>
+</html>
