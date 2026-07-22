@@ -519,6 +519,7 @@ textarea{width:100%;min-height:110px;background:var(--ink-deep);border:1px solid
       if(o.status!=='completed' && o.status!=='cancelled'){
         actionsHtml += '<button class="btn ghost small" data-cancel-order="'+o.id+'">取消訂單</button>';
       }
+      actionsHtml += '<button class="btn ghost small" data-delete-order="'+o.id+'" style="border-color:var(--rose-dim);color:var(--rose);">刪除</button>';
 
       html += '<div class="order-card">'
         + '<div class="order-top">'
@@ -547,6 +548,14 @@ textarea{width:100%;min-height:110px;background:var(--ink-deep);border:1px solid
         var id = btn.getAttribute('data-cancel-order');
         if(confirm('確定要取消這筆訂單嗎？')){
           ordersRef.child(id).child('status').set('cancelled');
+        }
+      });
+    });
+    el.querySelectorAll('[data-delete-order]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.getAttribute('data-delete-order');
+        if(confirm('確定要永久刪除這筆訂單嗎？此動作無法復原。')){
+          ordersRef.child(id).remove();
         }
       });
     });
