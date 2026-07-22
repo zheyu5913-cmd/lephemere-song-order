@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>曇時 點餐後台</title>
+<title>曇時 管理後台</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap');
 
@@ -34,6 +34,10 @@ body{margin:0;background:#241f30;font-family:'Noto Sans TC',sans-serif;}
 
 .panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px;}
 .panel-title{font-size:12px;color:var(--mist);letter-spacing:0.06em;margin:0 0 10px;text-transform:uppercase;}
+.admin-section-label{
+  font-family:'Noto Serif TC',serif; font-size:14px; color:var(--gold);
+  margin:0 0 12px; padding-bottom:6px; border-bottom:1px solid var(--line);
+}
 
 input[type=text]{
   background:var(--ink-deep);border:1px solid var(--line);color:var(--parchment);
@@ -42,6 +46,7 @@ input[type=text]{
 input::placeholder{color:var(--parchment-dim);}
 input:focus{outline:none;border-color:var(--gold-dim);}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+textarea{width:100%;min-height:110px;background:var(--ink-deep);border:1px solid var(--line);color:var(--parchment);border-radius:7px;padding:9px 11px;font-size:13px;font-family:inherit;resize:vertical;}
 
 .btn{background:transparent;border:1px solid var(--gold-dim);color:var(--gold);border-radius:7px;padding:9px 16px;font-size:13px;font-family:inherit;cursor:pointer;white-space:nowrap;}
 .btn:hover{background:rgba(202,160,107,0.1);}
@@ -51,6 +56,15 @@ input:focus{outline:none;border-color:var(--gold-dim);}
 .btn.ghost:hover{color:var(--parchment);border-color:var(--parchment-dim);}
 .btn.small{padding:5px 11px;font-size:11.5px;}
 
+.icon-btn{background:transparent;border:1px solid var(--line);color:var(--parchment-dim);width:30px;height:30px;border-radius:6px;cursor:pointer;font-size:13px;flex-shrink:0;}
+.icon-btn:hover{color:var(--parchment);border-color:var(--parchment-dim);}
+
+/* top-level section tabs */
+.main-tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+.main-tab{padding:9px 18px;border-radius:20px;border:1px solid var(--line);font-size:13px;cursor:pointer;color:var(--parchment-dim);background:var(--card);}
+.main-tab.active{border-color:var(--gold-dim);color:var(--gold);background:rgba(202,160,107,0.1);}
+
+/* order sub-tabs */
 .tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
 .tab{padding:7px 14px;border-radius:20px;border:1px solid var(--line);font-size:12.5px;cursor:pointer;color:var(--parchment-dim);}
 .tab.active{border-color:var(--gold-dim);color:var(--gold);background:rgba(202,160,107,0.08);}
@@ -76,6 +90,37 @@ input:focus{outline:none;border-color:var(--gold-dim);}
 .stat{font-size:13px;color:var(--parchment-dim);}
 .stat b{color:var(--gold);font-size:16px;display:block;font-family:'Noto Serif TC',serif;}
 
+.staff-check{
+  display:flex;align-items:center;gap:8px;background:var(--ink-deep);
+  border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:6px;
+}
+.staff-check label{flex:1;font-size:13px;cursor:pointer;}
+.staff-check-photo{
+  width:32px;height:32px;border-radius:50%;flex:none;overflow:hidden;
+  background:var(--ink);border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--parchment-dim);
+}
+.staff-check-photo img{width:100%;height:100%;object-fit:cover;}
+
+.photo-modal-overlay{
+  display:none;position:fixed;inset:0;background:rgba(10,8,16,0.72);z-index:200;
+  align-items:center;justify-content:center;padding:20px;
+}
+.photo-modal-overlay.open{display:flex;}
+.photo-modal{
+  background:var(--ink);border:1px solid var(--gold-dim);border-radius:12px;
+  padding:20px;max-width:340px;width:100%;
+}
+.photo-modal h4{font-family:'Noto Serif TC',serif;color:var(--gold);font-size:14px;margin-bottom:12px;}
+.photo-crop-stage{
+  width:260px;height:260px;margin:0 auto 12px;border-radius:50%;overflow:hidden;
+  background:var(--ink-deep);cursor:grab;position:relative;border:1px solid var(--line);
+}
+.photo-crop-stage:active{cursor:grabbing;}
+.photo-crop-stage canvas{display:block;}
+.photo-modal input[type=range]{width:100%;margin:6px 0 14px;}
+.photo-modal-actions{display:flex;gap:8px;justify-content:flex-end;}
+
 .login-box{max-width:360px;margin:60px auto;}
 .empty{font-size:12.5px;color:var(--parchment-dim);}
 </style>
@@ -86,7 +131,7 @@ input:focus{outline:none;border-color:var(--gold-dim);}
   <div class="header">
     <div class="brand">
       <h1>曇時 Cafe l'Éphémère</h1>
-      <p>點餐後台</p>
+      <p>管理後台</p>
     </div>
     <div class="clock">
       <div><span class="dot offline" id="connDot"></span><span id="connText">連線中...</span></div>
@@ -108,28 +153,97 @@ input:focus{outline:none;border-color:var(--gold-dim);}
   </div>
 
   <div id="adminArea" style="display:none;">
-    <div class="panel">
-      <div class="stats-row">
-        <div class="stat"><b id="statPending">0</b>待處理</div>
-        <div class="stat"><b id="statPreparing">0</b>製作中</div>
-        <div class="stat"><b id="statServed">0</b>已送出</div>
-        <div class="stat"><b id="statTotalGil">0</b>今日營業額（未取消）</div>
-      </div>
+
+    <div class="main-tabs" id="mainTabs">
+      <div class="main-tab active" data-main="orders">🍽 訂單管理</div>
+      <div class="main-tab" data-main="reservations">🕯 預約管理</div>
+      <button class="btn ghost small" id="adminLogoutBtn" style="margin-left:auto;">登出</button>
     </div>
 
-    <div class="row" style="justify-content:space-between;margin-bottom:10px;">
-      <div class="tabs" id="tabs">
+    <!-- ============ 訂單管理 ============ -->
+    <div id="ordersTab">
+      <div class="panel">
+        <div class="stats-row">
+          <div class="stat"><b id="statPending">0</b>待處理</div>
+          <div class="stat"><b id="statPreparing">0</b>製作中</div>
+          <div class="stat"><b id="statServed">0</b>已送出</div>
+          <div class="stat"><b id="statTotalGil">0</b>今日營業額（未取消）</div>
+        </div>
+      </div>
+
+      <div class="tabs" id="orderSubTabs">
         <div class="tab active" data-filter="active">進行中</div>
         <div class="tab" data-filter="completed">已完成</div>
         <div class="tab" data-filter="cancelled">已取消</div>
         <div class="tab" data-filter="all">全部</div>
       </div>
-      <button class="btn ghost small" id="adminLogoutBtn">登出</button>
+
+      <div id="orderList"></div>
     </div>
 
-    <div id="orderList"></div>
+    <!-- ============ 預約管理 ============ -->
+    <div id="reservationsTab" style="display:none;">
+
+      <div class="panel">
+        <p class="admin-section-label">📋 店規／注意事項</p>
+        <textarea id="rulesEditor" placeholder="輸入店規或注意事項"></textarea>
+        <div class="row" style="margin-top:8px;">
+          <button class="btn primary" id="saveRules">儲存店規</button>
+          <button class="btn ghost" id="hideRules">目前不顯示</button>
+        </div>
+        <p style="font-size:11.5px;color:var(--parchment-dim);margin:8px 0 0;">儲存後立刻顯示在預約頁面最上方。留空並儲存則不顯示這個區塊。</p>
+      </div>
+
+      <div class="panel">
+        <p class="admin-section-label">👥 店員名單／在班設定</p>
+        <p class="panel-title">新增店員到名單</p>
+        <div class="row">
+          <input type="text" id="newStaffName" placeholder="店員名稱" style="flex:1;min-width:100px;">
+          <input type="text" id="newStaffRole" placeholder="角色（如：店長／女僕／樂手）" style="flex:1;min-width:140px;">
+          <button class="btn primary" id="addStaff">加入名單</button>
+        </div>
+        <p class="panel-title" style="margin-top:16px;">勾選有上班的店員</p>
+        <div id="staffCheckList" style="margin-bottom:10px;">尚未建立店員名單</div>
+        <div class="row" style="margin-bottom:8px;">
+          <input type="text" id="onDutyDate" placeholder="日期 YYYY-MM-DD" style="min-width:130px;">
+        </div>
+        <button class="btn primary" id="updateTodayStaff">更新在班名單</button>
+        <p style="font-size:11.5px;color:var(--parchment-dim);margin:8px 0 0;">這份名單會持續顯示給客人看，直到下次更新為止。日期欄位僅供你自己記錄。</p>
+      </div>
+
+      <div class="panel">
+        <p class="admin-section-label">🕯 預約管理</p>
+        <p class="panel-title">開放可預約日期</p>
+        <div class="row">
+          <input type="text" id="newOpenDate" placeholder="日期 YYYY-MM-DD" style="min-width:140px;">
+          <button class="btn primary" id="addOpenDate">開放此日期</button>
+        </div>
+        <div id="openDateManageList" style="margin-top:10px;"></div>
+
+        <p class="panel-title" style="margin-top:16px;">目前預約總覽</p>
+        <div id="adminReservationList" style="font-size:12.5px;">尚無預約</div>
+      </div>
+
+    </div>
+
   </div>
 
+</div>
+
+<div class="photo-modal-overlay" id="photoModalOverlay">
+  <div class="photo-modal">
+    <h4>設定店員頭貼</h4>
+    <div class="photo-crop-stage" id="photoCropStage">
+      <canvas id="photoCropCanvas" width="260" height="260"></canvas>
+    </div>
+    <input type="file" id="photoFileInput" accept="image/*" style="font-size:12px;margin-bottom:8px;width:100%;">
+    <input type="range" id="photoZoomSlider" min="100" max="400" value="100">
+    <p style="font-size:11px;color:var(--parchment-dim);margin:-8px 0 12px;">選好照片後，拖曳可移動位置，滑桿可縮放</p>
+    <div class="photo-modal-actions">
+      <button class="btn ghost" id="photoModalCancel">取消</button>
+      <button class="btn primary" id="photoModalSave">儲存頭貼</button>
+    </div>
+  </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
@@ -151,9 +265,16 @@ input:focus{outline:none;border-color:var(--gold-dim);}
   var isConfigured = firebaseConfig.apiKey.indexOf('貼上') === -1;
   if(!isConfigured){ document.getElementById('configWarn').style.display = 'block'; }
 
-  var db, ordersRef;
+  var db;
+  var ordersRef, openDatesRef, reservationsRef, rulesRef, staffRosterRef, todayStaffRef;
+
   var orders = {};
-  var currentFilter = 'active';
+  var currentOrderFilter = 'active';
+
+  var openDates = {};
+  var reservations = {};
+  var staffRoster = {};
+  var todayStaff = {};
 
   var STATUS_LABEL = { pending:'待處理', preparing:'製作中', served:'已送出', completed:'已完成', cancelled:'已取消' };
   var NEXT_STATUS = { pending:'preparing', preparing:'served', served:'completed' };
@@ -165,6 +286,10 @@ input:focus{outline:none;border-color:var(--gold-dim);}
     var d = new Date(ts);
     return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
   }
+  function todayKey(){
+    var d = new Date();
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  }
 
   function tickClock(){
     var d=new Date();
@@ -173,10 +298,26 @@ input:focus{outline:none;border-color:var(--gold-dim);}
   tickClock();
   setInterval(tickClock,15000);
 
+  function formatRulesText(text){
+    var lines = text.split('\n');
+    var html = '';
+    for(var i=0;i<lines.length;i++){
+      var line = lines[i].trim();
+      if(line === '') continue;
+      html += '<div>' + escapeHtml(line) + '</div>';
+    }
+    return html;
+  }
+
   if(isConfigured){
     firebase.initializeApp(firebaseConfig);
     db = firebase.database();
     ordersRef = db.ref('lephemere/orders');
+    openDatesRef = db.ref('lephemere/openDates');
+    reservationsRef = db.ref('lephemere/reservations');
+    rulesRef = db.ref('lephemere/rules');
+    staffRosterRef = db.ref('lephemere/staffRoster');
+    todayStaffRef = db.ref('lephemere/todayStaff');
 
     db.ref('.info/connected').on('value', function(snap){
       document.getElementById('connDot').className = snap.val()===true ? 'dot online' : 'dot offline';
@@ -186,7 +327,7 @@ input:focus{outline:none;border-color:var(--gold-dim);}
       if(user){
         document.getElementById('loginBox').style.display = 'none';
         document.getElementById('adminArea').style.display = 'block';
-        attachOrders();
+        attachData();
       }else{
         document.getElementById('loginBox').style.display = 'block';
         document.getElementById('adminArea').style.display = 'none';
@@ -195,13 +336,44 @@ input:focus{outline:none;border-color:var(--gold-dim);}
   }
 
   var attached = false;
-  function attachOrders(){
+  function attachData(){
     if(attached) return;
     attached = true;
+
     ordersRef.on('value', function(snap){
       orders = snap.val() || {};
       renderStats();
       renderOrders();
+    });
+
+    rulesRef.on('value', function(snap){
+      var text = snap.val() || '';
+      document.getElementById('rulesEditor').value = text;
+    });
+
+    staffRosterRef.on('value', function(snap){
+      staffRoster = snap.val() || {};
+      renderStaffCheckList();
+    });
+
+    todayStaffRef.on('value', function(snap){
+      todayStaff = snap.val() || {};
+      renderStaffCheckList();
+      var dateInput = document.getElementById('onDutyDate');
+      if(dateInput && !dateInput.value){
+        dateInput.value = todayStaff.date || todayKey();
+      }
+    });
+
+    openDatesRef.on('value', function(snap){
+      openDates = snap.val() || {};
+      renderOpenDateManageList();
+    });
+
+    reservationsRef.on('value', function(snap){
+      reservations = snap.val() || {};
+      renderOpenDateManageList();
+      renderAdminReservations();
     });
   }
 
@@ -218,11 +390,23 @@ input:focus{outline:none;border-color:var(--gold-dim);}
   });
   document.getElementById('adminLogoutBtn').addEventListener('click', function(){ firebase.auth().signOut(); });
 
-  document.getElementById('tabs').addEventListener('click', function(e){
+  // ---------- main tabs ----------
+  document.getElementById('mainTabs').addEventListener('click', function(e){
+    var tab = e.target.closest('.main-tab');
+    if(!tab) return;
+    var target = tab.getAttribute('data-main');
+    document.querySelectorAll('.main-tab').forEach(function(t){ t.classList.remove('active'); });
+    tab.classList.add('active');
+    document.getElementById('ordersTab').style.display = target==='orders' ? 'block' : 'none';
+    document.getElementById('reservationsTab').style.display = target==='reservations' ? 'block' : 'none';
+  });
+
+  // ================= 訂單管理 =================
+  document.getElementById('orderSubTabs').addEventListener('click', function(e){
     var tab = e.target.closest('.tab');
     if(!tab) return;
-    currentFilter = tab.getAttribute('data-filter');
-    document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
+    currentOrderFilter = tab.getAttribute('data-filter');
+    document.querySelectorAll('#orderSubTabs .tab').forEach(function(t){ t.classList.remove('active'); });
     tab.classList.add('active');
     renderOrders();
   });
@@ -253,9 +437,9 @@ input:focus{outline:none;border-color:var(--gold-dim);}
     var arr = Object.keys(orders).map(function(id){ var o=orders[id]; o.id=id; return o; });
 
     arr = arr.filter(function(o){
-      if(currentFilter==='active') return o.status==='pending' || o.status==='preparing' || o.status==='served';
-      if(currentFilter==='completed') return o.status==='completed';
-      if(currentFilter==='cancelled') return o.status==='cancelled';
+      if(currentOrderFilter==='active') return o.status==='pending' || o.status==='preparing' || o.status==='served';
+      if(currentOrderFilter==='completed') return o.status==='completed';
+      if(currentOrderFilter==='cancelled') return o.status==='cancelled';
       return true;
     });
     arr.sort(function(a,b){ return (a.createdAt||0) - (b.createdAt||0); });
@@ -274,7 +458,7 @@ input:focus{outline:none;border-color:var(--gold-dim);}
         actionsHtml += '<button class="btn primary small" data-advance="'+o.id+'">'+NEXT_LABEL[o.status]+'</button>';
       }
       if(o.status!=='completed' && o.status!=='cancelled'){
-        actionsHtml += '<button class="btn ghost small" data-cancel="'+o.id+'">取消訂單</button>';
+        actionsHtml += '<button class="btn ghost small" data-cancel-order="'+o.id+'">取消訂單</button>';
       }
 
       html += '<div class="order-card">'
@@ -299,13 +483,235 @@ input:focus{outline:none;border-color:var(--gold-dim);}
         if(next) ordersRef.child(id).child('status').set(next);
       });
     });
-    el.querySelectorAll('[data-cancel]').forEach(function(btn){
+    el.querySelectorAll('[data-cancel-order]').forEach(function(btn){
       btn.addEventListener('click', function(){
-        var id = btn.getAttribute('data-cancel');
+        var id = btn.getAttribute('data-cancel-order');
         if(confirm('確定要取消這筆訂單嗎？')){
           ordersRef.child(id).child('status').set('cancelled');
         }
       });
+    });
+  }
+
+  // ================= 預約管理 =================
+
+  // ---------- rules ----------
+  document.getElementById('saveRules').addEventListener('click', function(){
+    if(!isConfigured) return;
+    rulesRef.set(document.getElementById('rulesEditor').value);
+  });
+  document.getElementById('hideRules').addEventListener('click', function(){
+    if(!isConfigured) return;
+    rulesRef.set('');
+    document.getElementById('rulesEditor').value = '';
+  });
+
+  // ---------- staff roster / on-duty ----------
+  function renderStaffCheckList(){
+    var el = document.getElementById('staffCheckList');
+    var keys = Object.keys(staffRoster);
+    if(keys.length===0){ el.innerHTML = '尚未建立店員名單'; return; }
+    var currentOnDuty = todayStaff.staffIds || [];
+    var html = '';
+    keys.forEach(function(k){
+      var s = staffRoster[k];
+      var checked = currentOnDuty.indexOf(k) > -1 ? 'checked' : '';
+      var photoInner = s.photo ? '<img src="'+s.photo+'" alt="">' : '';
+      html += '<div class="staff-check"><input type="checkbox" data-staff-id="'+k+'" '+checked+'>'
+        + '<div class="staff-check-photo">'+photoInner+'</div>'
+        + '<label>'+escapeHtml(s.name)+' <span style="color:var(--parchment-dim);font-size:11px;">· '+escapeHtml(s.role||'')+'</span></label>'
+        + '<button class="icon-btn" data-photo-staff="'+k+'" title="設定頭貼">📷</button>'
+        + '<button class="icon-btn" data-remove-staff="'+k+'" title="從名單刪除">✕</button>'
+        + '</div>';
+    });
+    el.innerHTML = html;
+    el.querySelectorAll('[data-remove-staff]').forEach(function(btn){
+      btn.addEventListener('click', function(){ staffRosterRef.child(btn.getAttribute('data-remove-staff')).remove(); });
+    });
+    el.querySelectorAll('[data-photo-staff]').forEach(function(btn){
+      btn.addEventListener('click', function(){ openPhotoEditor(btn.getAttribute('data-photo-staff')); });
+    });
+  }
+
+  document.getElementById('addStaff').addEventListener('click', function(){
+    if(!isConfigured) return;
+    var name = document.getElementById('newStaffName').value.trim();
+    var role = document.getElementById('newStaffRole').value.trim();
+    if(!name) return;
+    var key = staffRosterRef.push().key;
+    staffRosterRef.child(key).set({ name: name, role: role });
+    document.getElementById('newStaffName').value = '';
+    document.getElementById('newStaffRole').value = '';
+  });
+
+  document.getElementById('updateTodayStaff').addEventListener('click', function(){
+    if(!isConfigured) return;
+    var checked = document.querySelectorAll('#staffCheckList input[type=checkbox]:checked');
+    var ids = Array.prototype.map.call(checked, function(cb){ return cb.getAttribute('data-staff-id'); });
+    var dateInput = document.getElementById('onDutyDate').value.trim();
+    todayStaffRef.set({ date: dateInput || todayKey(), staffIds: ids });
+  });
+
+  // ---------- photo cropper ----------
+  var photoEditStaffId = null;
+  var photoImg = null;
+  var photoScale = 1, photoBaseScale = 1, photoOffX = 0, photoOffY = 0;
+  var photoDragging = false, photoDragStartX = 0, photoDragStartY = 0, photoStartOffX = 0, photoStartOffY = 0;
+  var photoCanvas = document.getElementById('photoCropCanvas');
+  var photoCtx = photoCanvas ? photoCanvas.getContext('2d') : null;
+
+  function openPhotoEditor(staffId){
+    photoEditStaffId = staffId;
+    photoImg = null;
+    document.getElementById('photoFileInput').value = '';
+    document.getElementById('photoZoomSlider').value = 100;
+    if(photoCtx) photoCtx.clearRect(0,0,260,260);
+    var existing = staffRoster[staffId] && staffRoster[staffId].photo;
+    if(existing){
+      var im = new Image();
+      im.onload = function(){ photoImg = im; fitPhotoToStage(); drawPhotoCanvas(); };
+      im.src = existing;
+    }
+    document.getElementById('photoModalOverlay').classList.add('open');
+  }
+  function closePhotoEditor(){
+    document.getElementById('photoModalOverlay').classList.remove('open');
+    photoEditStaffId = null;
+    photoImg = null;
+  }
+  function fitPhotoToStage(){
+    if(!photoImg) return;
+    photoBaseScale = Math.max(260/photoImg.width, 260/photoImg.height);
+    photoScale = 1;
+    photoOffX = 0; photoOffY = 0;
+    document.getElementById('photoZoomSlider').value = 100;
+  }
+  function drawPhotoCanvas(){
+    if(!photoCtx) return;
+    photoCtx.clearRect(0,0,260,260);
+    if(!photoImg) return;
+    var s = photoBaseScale * photoScale;
+    var w = photoImg.width * s, h = photoImg.height * s;
+    var x = (260 - w)/2 + photoOffX;
+    var y = (260 - h)/2 + photoOffY;
+    photoCtx.drawImage(photoImg, x, y, w, h);
+  }
+  var fileInputEl = document.getElementById('photoFileInput');
+  if(fileInputEl) fileInputEl.addEventListener('change', function(e){
+    var file = e.target.files && e.target.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      var im = new Image();
+      im.onload = function(){ photoImg = im; fitPhotoToStage(); drawPhotoCanvas(); };
+      im.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  var zoomSliderEl = document.getElementById('photoZoomSlider');
+  if(zoomSliderEl) zoomSliderEl.addEventListener('input', function(e){
+    photoScale = e.target.value / 100;
+    drawPhotoCanvas();
+  });
+  var stageEl = document.getElementById('photoCropStage');
+  if(stageEl){
+    stageEl.addEventListener('mousedown', function(e){
+      if(!photoImg) return;
+      photoDragging = true;
+      photoDragStartX = e.clientX; photoDragStartY = e.clientY;
+      photoStartOffX = photoOffX; photoStartOffY = photoOffY;
+    });
+    window.addEventListener('mousemove', function(e){
+      if(!photoDragging) return;
+      photoOffX = photoStartOffX + (e.clientX - photoDragStartX);
+      photoOffY = photoStartOffY + (e.clientY - photoDragStartY);
+      drawPhotoCanvas();
+    });
+    window.addEventListener('mouseup', function(){ photoDragging = false; });
+    stageEl.addEventListener('touchstart', function(e){
+      if(!photoImg || !e.touches[0]) return;
+      photoDragging = true;
+      photoDragStartX = e.touches[0].clientX; photoDragStartY = e.touches[0].clientY;
+      photoStartOffX = photoOffX; photoStartOffY = photoOffY;
+    });
+    stageEl.addEventListener('touchmove', function(e){
+      if(!photoDragging || !e.touches[0]) return;
+      photoOffX = photoStartOffX + (e.touches[0].clientX - photoDragStartX);
+      photoOffY = photoStartOffY + (e.touches[0].clientY - photoDragStartY);
+      drawPhotoCanvas();
+      e.preventDefault();
+    }, {passive:false});
+    stageEl.addEventListener('touchend', function(){ photoDragging = false; });
+  }
+  var cancelBtn = document.getElementById('photoModalCancel');
+  if(cancelBtn) cancelBtn.addEventListener('click', closePhotoEditor);
+  var saveBtn = document.getElementById('photoModalSave');
+  if(saveBtn) saveBtn.addEventListener('click', function(){
+    if(!photoEditStaffId || !photoImg){ closePhotoEditor(); return; }
+    var out = document.createElement('canvas');
+    out.width = 300; out.height = 300;
+    var octx = out.getContext('2d');
+    var s = photoBaseScale * photoScale * (300/260);
+    var w = photoImg.width * s, h = photoImg.height * s;
+    var x = (300 - w)/2 + photoOffX * (300/260);
+    var y = (300 - h)/2 + photoOffY * (300/260);
+    octx.drawImage(photoImg, x, y, w, h);
+    var dataUrl = out.toDataURL('image/webp', 0.85);
+    staffRosterRef.child(photoEditStaffId).child('photo').set(dataUrl);
+    closePhotoEditor();
+  });
+
+  // ---------- open dates ----------
+  function renderOpenDateManageList(){
+    var el = document.getElementById('openDateManageList');
+    var keys = Object.keys(openDates).sort();
+    if(keys.length===0){ el.innerHTML = '<span style="color:var(--parchment-dim);font-size:12px;">尚未開放任何日期</span>'; return; }
+    var reservedDates = {};
+    Object.keys(reservations).forEach(function(id){ reservedDates[reservations[id].date] = true; });
+    var html = '<div style="display:flex;flex-direction:column;gap:6px;">';
+    keys.forEach(function(d){
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding-bottom:6px;">'
+        + '<span>'+d+(reservedDates[d]?' <span style="color:var(--rose);font-size:11px;">已被預約</span>':' <span style="color:var(--sage);font-size:11px;">可預約</span>')+'</span>'
+        + '<button class="icon-btn" data-remove-date="'+d+'" title="取消開放">✕</button>'
+        + '</div>';
+    });
+    html += '</div>';
+    el.innerHTML = html;
+    el.querySelectorAll('[data-remove-date]').forEach(function(btn){
+      btn.addEventListener('click', function(){ openDatesRef.child(btn.getAttribute('data-remove-date')).remove(); });
+    });
+  }
+
+  document.getElementById('addOpenDate').addEventListener('click', function(){
+    if(!isConfigured) return;
+    var date = document.getElementById('newOpenDate').value.trim();
+    if(!date) return;
+    openDatesRef.child(date).set(true);
+    document.getElementById('newOpenDate').value = '';
+  });
+
+  // ---------- reservations list ----------
+  function renderAdminReservations(){
+    var el = document.getElementById('adminReservationList');
+    var keys = Object.keys(reservations);
+    if(keys.length===0){ el.innerHTML = '尚無預約'; return; }
+    var arr = keys.map(function(id){ var r=reservations[id]; r.id=id; return r; });
+    arr.sort(function(a,b){ return a.date.localeCompare(b.date); });
+    var html = '<div style="display:flex;flex-direction:column;gap:8px;">';
+    arr.forEach(function(r){
+      var songs = (r.songs||[]).map(function(s){ return s.title; }).join('、') || '（未選歌曲）';
+      html += '<div style="border-bottom:1px solid var(--line);padding-bottom:8px;">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;">'
+        + '<span>'+r.date+' · '+escapeHtml(r.name)+' · '+r.size+'位'+(r.maid?' · 指名：'+escapeHtml(r.maid):'')+(r.note?' · '+escapeHtml(r.note):'')+'</span>'
+        + '<button class="icon-btn" data-cancel-reservation="'+r.id+'" title="取消預約">✕</button>'
+        + '</div>'
+        + '<div style="font-size:11.5px;color:var(--parchment-dim);margin-top:3px;">點歌：'+escapeHtml(songs)+'</div>'
+        + '</div>';
+    });
+    html += '</div>';
+    el.innerHTML = html;
+    el.querySelectorAll('[data-cancel-reservation]').forEach(function(btn){
+      btn.addEventListener('click', function(){ reservationsRef.child(btn.getAttribute('data-cancel-reservation')).remove(); });
     });
   }
 
