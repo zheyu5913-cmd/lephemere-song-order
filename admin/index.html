@@ -156,6 +156,7 @@ textarea{width:100%;min-height:110px;background:var(--ink-deep);border:1px solid
 
     <div class="main-tabs" id="mainTabs">
       <div class="main-tab active" data-main="orders">🍽 訂單管理</div>
+      <div class="main-tab" data-main="menu">🍰 菜單管理</div>
       <div class="main-tab" data-main="reservations">🕯 預約管理</div>
       <button class="btn ghost small" id="adminLogoutBtn" style="margin-left:auto;">登出</button>
     </div>
@@ -179,6 +180,34 @@ textarea{width:100%;min-height:110px;background:var(--ink-deep);border:1px solid
       </div>
 
       <div id="orderList"></div>
+    </div>
+
+    <!-- ============ 菜單管理 ============ -->
+    <div id="menuTab" style="display:none;">
+      <div class="panel">
+        <p class="admin-section-label">🍰 新增餐點</p>
+        <div class="row">
+          <input type="text" id="newItemCategory" placeholder="分類（如：主食、拍立得）" style="flex:1;min-width:120px;">
+          <input type="text" id="newItemName" placeholder="品名" style="flex:1;min-width:120px;">
+          <input type="text" id="newItemPrice" placeholder="價格（Gil）" style="width:110px;">
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <input type="text" id="newItemNote" placeholder="備註（選填，顯示在品名下方）" style="flex:1;min-width:160px;">
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <input type="text" id="newItemAddonLabel" placeholder="加購項目名稱（選填）" style="flex:1;min-width:140px;">
+          <input type="text" id="newItemAddonPrice" placeholder="加購價格" style="width:110px;">
+        </div>
+        <button class="btn primary" id="addMenuItem" style="margin-top:10px;">新增到菜單</button>
+        <p style="font-size:11.5px;color:var(--parchment-dim);margin:8px 0 0;">分類欄位打一樣的名稱會自動歸在同一區。例如想加「小顏 拍立得」「Naipa 拍立得」，分類都打「拍立得」即可。</p>
+      </div>
+
+      <div class="panel">
+        <p class="admin-section-label">📖 目前菜單</p>
+        <div id="menuManageList">尚未設定菜單</div>
+        <button class="btn ghost small" id="seedDefaultMenu" style="margin-top:12px;">匯入官網現有菜單</button>
+        <p style="font-size:11px;color:var(--parchment-dim);margin:8px 0 0;">只有在菜單完全空白時可以使用，會把官網上的前菜／湯品／主食／飲品／甜品／無菜單套餐匯入進來，之後可以再自行增減。</p>
+      </div>
     </div>
 
     <!-- ============ 預約管理 ============ -->
@@ -266,10 +295,28 @@ textarea{width:100%;min-height:110px;background:var(--ink-deep);border:1px solid
   if(!isConfigured){ document.getElementById('configWarn').style.display = 'block'; }
 
   var db;
-  var ordersRef, openDatesRef, reservationsRef, rulesRef, staffRosterRef, todayStaffRef;
+  var ordersRef, openDatesRef, reservationsRef, rulesRef, staffRosterRef, todayStaffRef, menuRef;
 
   var orders = {};
   var currentOrderFilter = 'active';
+
+  var menuItems = {};
+  var menuCategoryOrder = [];
+
+  var DEFAULT_MENU = [
+    { category:'Appetizer 前菜', name:'黑衣森林傘蕈溫沙拉', price:8000 },
+    { category:'Appetizer 前菜', name:'庫爾蘋果新薯沙拉', price:8000 },
+    { category:'Soup 湯品', name:'法式焗烤起司洋蔥湯', price:12000 },
+    { category:'Main Course 主食', name:'巨匠特製紅醬蛋包飯', price:18000, addonLabel:'加購隱藏魔法（店員到桌服務）', addonPrice:5000 },
+    { category:'Main Course 主食', name:'黑松露野菇燉飯', price:18000 },
+    { category:'Drinks 飲品', name:'三倍絲滑鮮奶油咖啡', price:10000 },
+    { category:'Drinks 飲品', name:'絲絨醇厚熱巧克力', price:10000 },
+    { category:'Drinks 飲品', name:'伊修加爾德皇家奶茶', price:10000 },
+    { category:'Dessert 甜品', name:'莊園黑巧奶油蛋糕', price:10000 },
+    { category:'Dessert 甜品', name:'現煎黃金法式吐司', price:10000 },
+    { category:'Dessert 甜品', name:'秋實手工柿子布丁', price:10000 },
+    { category:'Set 無菜單料理', name:'主廚精選五道套餐（店長隨機出餐）', price:40000, note:'共5道菜，內容由店長現場決定' }
+  ];
 
   var openDates = {};
   var reservations = {};
@@ -318,6 +365,7 @@ textarea{width:100%;min-height:110px;background:var(--ink-deep);border:1px solid
     rulesRef = db.ref('lephemere/rules');
     staffRosterRef = db.ref('lephemere/staffRoster');
     todayStaffRef = db.ref('lephemere/todayStaff');
+    menuRef = db.ref('lephemere/menu');
 
     db.ref('.info/connected').on('value', function(snap){
       document.getElementById('connDot').className = snap.val()===true ? 'dot online' : 'dot offline';
@@ -365,6 +413,16 @@ textarea{width:100%;min-height:110px;background:var(--ink-deep);border:1px solid
       }
     });
 
+    menuRef.on('value', function(snap){
+      menuItems = snap.val() || {};
+      menuCategoryOrder = [];
+      Object.keys(menuItems).forEach(function(id){
+        var cat = menuItems[id].category || '其他';
+        if(menuCategoryOrder.indexOf(cat) === -1) menuCategoryOrder.push(cat);
+      });
+      renderMenuManageList();
+    });
+
     openDatesRef.on('value', function(snap){
       openDates = snap.val() || {};
       renderOpenDateManageList();
@@ -398,6 +456,7 @@ textarea{width:100%;min-height:110px;background:var(--ink-deep);border:1px solid
     document.querySelectorAll('.main-tab').forEach(function(t){ t.classList.remove('active'); });
     tab.classList.add('active');
     document.getElementById('ordersTab').style.display = target==='orders' ? 'block' : 'none';
+    document.getElementById('menuTab').style.display = target==='menu' ? 'block' : 'none';
     document.getElementById('reservationsTab').style.display = target==='reservations' ? 'block' : 'none';
   });
 
@@ -492,6 +551,87 @@ textarea{width:100%;min-height:110px;background:var(--ink-deep);border:1px solid
       });
     });
   }
+
+  // ================= 菜單管理 =================
+
+  function renderMenuManageList(){
+    var el = document.getElementById('menuManageList');
+    if(menuCategoryOrder.length === 0){ el.innerHTML = '尚未設定菜單'; return; }
+    var groups = {};
+    menuCategoryOrder.forEach(function(c){ groups[c] = []; });
+    Object.keys(menuItems).forEach(function(id){
+      var item = menuItems[id];
+      var cat = item.category || '其他';
+      if(!groups[cat]) groups[cat] = [];
+      groups[cat].push(Object.assign({id:id}, item));
+    });
+    var html = '';
+    menuCategoryOrder.forEach(function(cat){
+      var items = groups[cat] || [];
+      if(items.length === 0) return;
+      html += '<p class="panel-title" style="margin-top:14px;">'+escapeHtml(cat)+'</p>';
+      items.forEach(function(item){
+        html += '<div class="staff-check">'
+          + '<label style="flex:1;">'+escapeHtml(item.name)+' <span style="color:var(--gold-dim);">'+fmtGil(item.price)+'</span>'
+          + (item.note ? '<div style="font-size:11px;color:var(--parchment-dim);">'+escapeHtml(item.note)+'</div>' : '')
+          + (item.addonLabel ? '<div style="font-size:11px;color:var(--mist);">加購：'+escapeHtml(item.addonLabel)+' ＋'+fmtGil(item.addonPrice)+'</div>' : '')
+          + '</label>'
+          + '<button class="icon-btn" data-remove-item="'+item.id+'" title="從菜單刪除">✕</button>'
+          + '</div>';
+      });
+    });
+    el.innerHTML = html || '尚未設定菜單';
+    el.querySelectorAll('[data-remove-item]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        if(confirm('確定要從菜單移除這個品項嗎？')){
+          menuRef.child(btn.getAttribute('data-remove-item')).remove();
+        }
+      });
+    });
+  }
+
+  document.getElementById('addMenuItem').addEventListener('click', function(){
+    if(!isConfigured) return;
+    var category = document.getElementById('newItemCategory').value.trim();
+    var name = document.getElementById('newItemName').value.trim();
+    var price = parseInt(document.getElementById('newItemPrice').value, 10);
+    var note = document.getElementById('newItemNote').value.trim();
+    var addonLabel = document.getElementById('newItemAddonLabel').value.trim();
+    var addonPrice = parseInt(document.getElementById('newItemAddonPrice').value, 10);
+
+    if(!category || !name || !price || price < 0){
+      alert('請至少填寫分類、品名跟價格');
+      return;
+    }
+    var data = { category:category, name:name, price:price };
+    if(note) data.note = note;
+    if(addonLabel && addonPrice){ data.addonLabel = addonLabel; data.addonPrice = addonPrice; }
+
+    var key = menuRef.push().key;
+    menuRef.child(key).set(data);
+
+    document.getElementById('newItemCategory').value = '';
+    document.getElementById('newItemName').value = '';
+    document.getElementById('newItemPrice').value = '';
+    document.getElementById('newItemNote').value = '';
+    document.getElementById('newItemAddonLabel').value = '';
+    document.getElementById('newItemAddonPrice').value = '';
+  });
+
+  document.getElementById('seedDefaultMenu').addEventListener('click', function(){
+    if(!isConfigured) return;
+    if(Object.keys(menuItems).length > 0){
+      alert('菜單目前已經有品項了，這個按鈕只能在菜單全空的時候使用，避免重複匯入。');
+      return;
+    }
+    if(!confirm('確定要匯入官網現有菜單嗎？')) return;
+    var updates = {};
+    DEFAULT_MENU.forEach(function(item){
+      var key = menuRef.push().key;
+      updates[key] = item;
+    });
+    menuRef.update(updates);
+  });
 
   // ================= 預約管理 =================
 
