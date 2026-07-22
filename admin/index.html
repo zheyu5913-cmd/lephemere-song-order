@@ -170,6 +170,8 @@ textarea{width:100%;min-height:110px;background:var(--ink-deep);border:1px solid
           <div class="stat"><b id="statServed">0</b>已送出</div>
           <div class="stat"><b id="statTotalGil">0</b>今日營業額（未取消）</div>
         </div>
+        <button class="btn ghost small" id="resetOrderNumber" style="margin-top:12px;border-color:var(--rose-dim);color:var(--rose);">重置訂單編號</button>
+        <p style="font-size:11px;color:var(--parchment-dim);margin:6px 0 0;">下一筆新訂單會從 #1 開始重新編號，不會影響已存在的訂單紀錄。</p>
       </div>
 
       <div class="tabs" id="orderSubTabs">
@@ -295,7 +297,7 @@ textarea{width:100%;min-height:110px;background:var(--ink-deep);border:1px solid
   if(!isConfigured){ document.getElementById('configWarn').style.display = 'block'; }
 
   var db;
-  var ordersRef, openDatesRef, reservationsRef, rulesRef, staffRosterRef, todayStaffRef, menuRef;
+  var ordersRef, openDatesRef, reservationsRef, rulesRef, staffRosterRef, todayStaffRef, menuRef, nextOrderNumberRef;
 
   var orders = {};
   var currentOrderFilter = 'active';
@@ -360,6 +362,7 @@ textarea{width:100%;min-height:110px;background:var(--ink-deep);border:1px solid
     firebase.initializeApp(firebaseConfig);
     db = firebase.database();
     ordersRef = db.ref('lephemere/orders');
+    nextOrderNumberRef = db.ref('lephemere/nextOrderNumber');
     openDatesRef = db.ref('lephemere/openDates');
     reservationsRef = db.ref('lephemere/reservations');
     rulesRef = db.ref('lephemere/rules');
@@ -560,6 +563,13 @@ textarea{width:100%;min-height:110px;background:var(--ink-deep);border:1px solid
       });
     });
   }
+
+  document.getElementById('resetOrderNumber').addEventListener('click', function(){
+    if(!isConfigured) return;
+    if(confirm('確定要把訂單編號重置成從 #1 開始嗎？既有的訂單紀錄不會被刪除或更動。')){
+      nextOrderNumberRef.set(0);
+    }
+  });
 
   // ================= 菜單管理 =================
 
